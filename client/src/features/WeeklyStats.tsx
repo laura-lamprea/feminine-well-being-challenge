@@ -12,25 +12,18 @@ import { Activity, CalendarIcon, MessageSquare, Quote } from "lucide-react";
 import { wellnessService } from "../services/wellness.service";
 import type { WellnessLogModel } from "../types/wellness";
 import { Card } from "../components/Shared";
+import { getOrUserId } from "../hooks/auth";
 
 export function WeeklyStats() {
   const [data, setData] = useState<WellnessLogModel[]>([]);
   const [loading, setLoading] = useState(true);
 
-  console.log("WeeklyStats render with data:", data);
-
   useEffect(() => {
-    let active = true;
-    wellnessService.getWeeklyStats("user-1234567").then((logs) => {
-      if (active) {
-        console.log("Fetched weekly stats:", logs);
-        setData(logs);
-        setLoading(false);
-      }
+    const userId = getOrUserId();
+    wellnessService.getWeeklyStats(userId).then((logs) => {
+      setData(logs);
+      setLoading(false);
     });
-    return () => {
-      active = false;
-    };
   }, []);
 
   if (loading)

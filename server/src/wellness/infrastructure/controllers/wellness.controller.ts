@@ -19,7 +19,8 @@ export class WellnessController {
     description: "The wellness log has been successfully created/updated.",
   })
   async log(@Body() dto: CreateWellnessLogDto) {
-    return this.logWellnessUseCase.run(dto);
+    await this.logWellnessUseCase.run(dto);
+    return { status: "success" };
   }
 
   @Get("stats")

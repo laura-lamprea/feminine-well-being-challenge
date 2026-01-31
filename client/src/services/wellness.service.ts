@@ -4,27 +4,9 @@ import type {
 } from "../types/wellness";
 
 const API_URL = import.meta.env.VITE_API_URL;
+const QUEUE_KEY = "f2fit_pending_sync";
+
 export const wellnessService = {
-  saveLog: async (data: CreateWellnessLogModel): Promise<void> => {
-    try {
-      const response = await fetch(`${API_URL}/wellness/log`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Error al guardar el registro");
-      }
-    } catch (error) {
-      console.error("API Error:", error);
-      throw error;
-    }
-  },
-
   getWeeklyStats: async (
     userId: string,
     targetDate?: string,
@@ -46,4 +28,49 @@ export const wellnessService = {
       return [];
     }
   },
+
+  saveLog: async (data: any) => {
+    if (!navigator.onLine) {
+      const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+      const updatedQueue = [
+        ...queue.filter((q: any) => q.date !== data.date),
+        data,
+      ];
+      localStorage.setItem(QUEUE_KEY, JSON.stringify(updatedQueue));
+      throw new Error("OFFLINE_SAVED");
+    }
+
+    const response = await fetch(`${API_URL}/wellness/log`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Error en el servidor");
+    }
+
+    if (
+      response.status !== 204 &&
+      response.headers.get("content-type")?.includes("application/json")
+    ) {
+      await response.json();
+    }
+  },
+
+  sync: async function () {
+    const queue = JSON.parse(localStorage.getItem(QUEUE_KEY) || "[]");
+    if (queue.length === 0) return;
+    for (const log of queue) {
+      try {
+        await this.saveLog(log);
+      } catch (e) {
+        break;
+      }
+    }
+    localStorage.removeItem(QUEUE_KEY);
+  },
 };
+
+window.addEventListener("online", () => wellnessService.sync());

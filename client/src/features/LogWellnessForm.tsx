@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Calendar,
   Zap,
@@ -11,10 +11,12 @@ import {
   Droplets,
 } from "lucide-react";
 import { wellnessService } from "../services/wellness.service";
-import type { CreateWellnessLogModel, HabitsModel } from "../types/wellness";
+import type { HabitsModel } from "../types/wellness";
 import { Card, Label, RatingSelector } from "../components/Shared";
+import { getOrUserId } from "../hooks/auth";
 
 export function LogWellnessForm() {
+  const userId = getOrUserId();
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -30,6 +32,40 @@ export function LogWellnessForm() {
   });
 
   const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    const fetchTodayData = async () => {
+      const stats = await wellnessService.getWeeklyStats(userId, date);
+
+      const todayRecord = stats.find((s) => {
+        const recordDate = new Date(s.date).toISOString().split("T")[0];
+        return recordDate === date;
+      });
+
+      if (todayRecord) {
+        setEnergy(todayRecord.physicalEnergy);
+        setEmotion(todayRecord.emotionalState);
+        setNotes(todayRecord.notes || "");
+        setHabits({
+          exercise: todayRecord.exercise,
+          hydration: todayRecord.hydration,
+          sleep: todayRecord.sleep,
+          nutrition: todayRecord.nutrition,
+        });
+      } else {
+        setEnergy(3);
+        setEmotion(3);
+        setNotes("");
+        setHabits({
+          exercise: false,
+          hydration: false,
+          sleep: false,
+          nutrition: false,
+        });
+      }
+    };
+    fetchTodayData();
+  }, [date, userId]);
 
   const toggleHabit = (key: keyof HabitsModel) => {
     setHabits((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -47,21 +83,28 @@ export function LogWellnessForm() {
     e.preventDefault();
     setLoading(true);
 
-    const payload: CreateWellnessLogModel = {
-      userId: "user-1234567",
-      date: date,
+    const payload = {
+      userId,
+      date,
       physical_energy: energy,
       emotional_state: emotion,
       notes: notes.slice(0, 100),
-      habits: habits,
+      habits,
     };
 
     try {
       await wellnessService.saveLog(payload);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
-    } catch (error) {
-      alert("Error al guardar. Revisa la conexión.");
+    } catch (error: any) {
+      if (error.message === "OFFLINE_SAVED") {
+        alert(
+          "Sin conexión. El registro se guardó en tu dispositivo y se sincronizará pronto.",
+        );
+        setSuccess(true);
+      } else {
+        alert(error.message || "Error al guardar. Revisa la conexión.");
+      }
     } finally {
       setLoading(false);
     }
@@ -206,14 +249,22 @@ export function LogWellnessForm() {
         />
       </div>
 
-      <Card className="p-4">
+      <Card className="p-4 space-y-2">
         <textarea
           placeholder="Notas..."
+          maxLength={100}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
           className="w-full bg-transparent text-slate-200 placeholder-slate-600 focus:outline-none resize-none"
         />
+        <div className="flex justify-end">
+          <span
+            className={`text-[10px] font-bold ${notes.length >= 100 ? "text-rose-500" : "text-slate-500"}`}
+          >
+            {notes.length}/100
+          </span>
+        </div>
       </Card>
 
       <button

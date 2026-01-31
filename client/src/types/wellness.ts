@@ -15,9 +15,9 @@ export interface WellnessLogModel {
   emotionalState: number;
   notes: string;
   exercise: boolean;
-  hydration: number;
-  sleep: number;
-  nutrition: number;
+  hydration: boolean;
+  sleep: boolean;
+  nutrition: boolean;
 }
 
 export interface HabitsModel {
