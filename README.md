@@ -70,3 +70,7 @@ Para este MVP se han tomado decisiones orientadas a la escalabilidad, disponibil
 * GetWeeklyStatsUseCase: Verificación de recuperación de datos por rango de fechas.
 
 Correrlos con `npm run test`
+
+<img width="361" height="880" alt="Captura de pantalla 2026-01-30 a las 11 42 31 p m" src="https://github.com/user-attachments/assets/d15b3a03-b319-4771-b313-1100a1db9872" />
+
+
